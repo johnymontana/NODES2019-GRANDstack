@@ -1,45 +1,45 @@
-type User {
-  id: ID!
-  name: String
-  friends: [User] @relation(name: "FRIENDS", direction: "BOTH")
-  reviews: [Review] @relation(name: "WROTE", direction: "OUT")
-  avgStars: Float
-    @cypher(
-      statement: "MATCH (this)-[:WROTE]->(r:Review) RETURN toFloat(avg(r.stars))"
-    )
-  numReviews: Int
-    @cypher(statement: "MATCH (this)-[:WROTE]->(r:Review) RETURN COUNT(r)")
-  recommendations(first: Int = 3): [Business] @cypher(statement: "MATCH (this)-[:WROTE]->(r:Review)-[:REVIEWS]->(:Business)<-[:REVIEWS]-(:Review)<-[:WROTE]-(:User)-[:WROTE]->(:Review)-[:REVIEWS]->(rec:Business) WHERE NOT EXISTS( (this)-[:WROTE]->(:Review)-[:REVIEWS]->(rec) )WITH rec, COUNT(*) AS num ORDER BY num DESC LIMIT $first RETURN rec")
+type Venue {
+   name: String!
+   sessions: [Session] @relation(name: "IN", direction: "IN")
 }
 
-type Business {
-  id: ID!
-  name: String
-  address: String
-  city: String
-  state: String
-  avgStars: Float @cypher(statement: "MATCH (this)<-[:REVIEWS]-(r:Review) RETURN coalesce(avg(r.stars),0.0)")
-  reviews: [Review] @relation(name: "REVIEWS", direction: "IN")
-  categories: [Category] @relation(name: "IN_CATEGORY", direction: "OUT")
+type Speaker {
+   name: String!
+   works_for: [Company] @relation(name: "WORKS_FOR", direction: "OUT")
+   presents: [Session] @relation(name: "PRESENTS", direction: "OUT")
 }
 
-type Review {
-  id: ID!
-  stars: Int
-  text: String
-  date: Date
-  business: Business @relation(name: "REVIEWS", direction: "OUT")
-  user: User @relation(name: "WROTE", direction: "IN")
+type Company {
+   name: String!
+   speakers: [Speaker] @relation(name: "WORKS_FOR", direction: "IN")
 }
 
-type Category {
-  name: ID!
-  businesses: [Business] @relation(name: "IN_CATEGORY", direction: "IN")
+type Subject {
+   name: String!
+   sessions: [Session] @relation(name: "HAS_SUBJECT", direction: "IN")
 }
 
-type Query {
-  usersBySubstring(substring: String): [User]
-    @cypher(
-      statement: "MATCH (u:User) WHERE u.name CONTAINS $substring RETURN u"
-    )
+type Tag {
+   name: String!
+   sessions: [Session] @relation(name: "HAS_TAG", direction: "IN")
+}
+
+type Session {
+   audience: String!
+   description: String
+   event_end: DateTime!
+   event_start: DateTime!
+   id: String!
+   name: String!
+   photo: String
+   in: [Venue] @relation(name: "IN", direction: "OUT")
+   has_subject: [Subject] @relation(name: "HAS_SUBJECT", direction: "OUT")
+   has_tag: [Tag] @relation(name: "HAS_TAG", direction: "OUT")
+   speakers: [Speaker] @relation(name: "PRESENTS", direction: "IN")
+   
+   recommended(first: Int = 3): [Session] @cypher(statement: """
+    MATCH (this)-[:HAS_TAG|HAS_SUBJECT]->()<-[:HAS_TAG|HAS_SUBJECT]-(rec:Session)
+    WITH rec, COUNT(*) AS score
+    RETURN rec ORDER BY score DESC LIMIT $first
+   """)
 }

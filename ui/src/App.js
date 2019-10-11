@@ -102,7 +102,7 @@ class App extends Component {
     super(props);
     this.state = {
       selectedView: "Home",
-      open: true
+      open: false
     };
   }
 
@@ -156,7 +156,7 @@ class App extends Component {
                 noWrap
                 className={classes.title}
               >
-                Welcome To GRANDstack
+                Welcome To NODES GRANDstack
               </Typography>
             </Toolbar>
           </AppBar>
@@ -192,14 +192,14 @@ class App extends Component {
                   <ListItemIcon>
                     <EventNoteIcon />
                   </ListItemIcon>
-                  <ListItemText primary="Businesses" />
+                  <ListItemText primary="Sessions" />
                 </ListItem>
 
                 <ListItem button onClick={() => this.setSelectedView("Users")}>
                   <ListItemIcon>
                     <PeopleIcon />
                   </ListItemIcon>
-                  <ListItemText primary="Users" />
+                  <ListItemText primary="Speakers" />
                 </ListItem>
               </div>
             </List>
@@ -209,9 +209,7 @@ class App extends Component {
 
             {/* FIXME: Use proper routing here instead  */}
             <Typography component="div" className={classes.chartContainer}>
-              {this.state.selectedView === "Home" ? <UserList /> : null}
-              {this.state.selectedView === "Businesses" ? <div /> : null}
-              {this.state.selectedView === "Users" ? <UserList /> : null}
+              <UserList />
             </Typography>
           </main>
         </div>

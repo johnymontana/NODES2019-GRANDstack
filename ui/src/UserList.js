@@ -18,7 +18,7 @@ import {
 
 const styles = theme => ({
   root: {
-    maxWidth: 700,
+    maxWidth: 1700,
     marginTop: theme.spacing.unit * 3,
     overflowX: "auto",
     margin: "auto"
@@ -39,9 +39,9 @@ class UserList extends React.Component {
 
     this.state = {
       order: "asc",
-      orderBy: "name",
+      orderBy: "event_start",
       page: 0,
-      rowsPerPage: 10,
+      rowsPerPage: 100,
       usernameFilter: ""
     };
   }
@@ -59,7 +59,7 @@ class UserList extends React.Component {
 
   getFilter = () => {
     return this.state.usernameFilter.length > 0
-      ? { name_contains: this.state.usernameFilter }
+      ? { description_contains: this.state.usernameFilter }
       : {};
   };
 
@@ -77,11 +77,11 @@ class UserList extends React.Component {
     return (
       <Paper className={classes.root}>
         <Typography variant="h2" gutterBottom>
-          User List
+          NODES 2019 Session List
         </Typography>
         <TextField
           id="search"
-          label="User Name Contains"
+          label="Search Session Description"
           className={classes.textField}
           value={this.state.usernameFilter}
           onChange={this.handleFilterChange("usernameFilter")}
@@ -95,22 +95,44 @@ class UserList extends React.Component {
 
         <Query
           query={gql`
-            query usersPaginateQuery(
+            query sessionQuery(
               $first: Int
               $offset: Int
-              $orderBy: [_UserOrdering]
-              $filter: _UserFilter
+              $orderBy: [_SessionOrdering]
+              $filter: _SessionFilter
             ) {
-              User(
+              Session(
                 first: $first
                 offset: $offset
                 orderBy: $orderBy
                 filter: $filter
               ) {
-                id
                 name
-                avgStars
-                numReviews
+                description
+                event_start {
+                  formatted
+                }
+                event_end {
+                  formatted
+                }
+                audience
+                has_tag {
+                  name
+                }
+                has_subject {
+                  name
+                }
+                photo
+                speakers {
+                  name
+                  works_for {
+                    name
+                  }
+                }
+                recommended(first: 1) {
+                  name
+                  id
+                }
               }
             }
           `}
@@ -143,7 +165,7 @@ class UserList extends React.Component {
                           direction={order}
                           onClick={() => this.handleSortRequest("name")}
                         >
-                          Name
+                          Image
                         </TableSortLabel>
                       </Tooltip>
                     </TableCell>
@@ -162,7 +184,7 @@ class UserList extends React.Component {
                           direction={order}
                           onClick={() => this.handleSortRequest("avgStars")}
                         >
-                          Average Stars
+                          Name
                         </TableSortLabel>
                       </Tooltip>
                     </TableCell>
@@ -181,23 +203,95 @@ class UserList extends React.Component {
                           direction={order}
                           onClick={() => this.handleSortRequest("numReviews")}
                         >
-                          Number of Reviews
+                          Presenter
+                        </TableSortLabel>
+                      </Tooltip>
+                    </TableCell>
+
+                    <TableCell
+                      key="name"
+                      sortDirection={orderBy === "name" ? order : false}
+                    >
+                      <Tooltip
+                        title="Sort"
+                        placement="bottom-start"
+                        enterDelay={300}
+                      >
+                        <TableSortLabel
+                          active={orderBy === "name"}
+                          direction={order}
+                          onClick={() => this.handleSortRequest("name")}
+                        >
+                          Description
+                        </TableSortLabel>
+                      </Tooltip>
+                    </TableCell>
+
+                    <TableCell
+                      key="name"
+                      sortDirection={orderBy === "name" ? order : false}
+                    >
+                      <Tooltip
+                        title="Sort"
+                        placement="bottom-start"
+                        enterDelay={300}
+                      >
+                        <TableSortLabel
+                          active={orderBy === "name"}
+                          direction={order}
+                          onClick={() => this.handleSortRequest("name")}
+                        >
+                          Recommended
                         </TableSortLabel>
                       </Tooltip>
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.User.map(n => {
+                  {data.Session.map(n => {
+                    console.log(n);
                     return (
                       <TableRow key={n.id}>
                         <TableCell component="th" scope="row">
-                          {n.name}
+                          <img
+                            width="300px"
+                            src={
+                              n.photo
+                                ? "//" + n.photo
+                                : "//go.neo4j.com/rs/710-RRC-335/images/neo4j_logo.png"
+                            }
+                          ></img>
                         </TableCell>
-                        <TableCell numeric>
-                          {n.avgStars ? n.avgStars.toFixed(2) : "-"}
+                        <TableCell>
+                          <b>{n.name}</b>
                         </TableCell>
-                        <TableCell numeric>{n.numReviews}</TableCell>
+                        <TableCell>
+                          {n.speakers.map(s => {
+                            return s.name;
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <div
+                            className="content"
+                            dangerouslySetInnerHTML={{ __html: n.description }}
+                          ></div>
+                        </TableCell>
+
+                        <TableCell>
+                          <a
+                            href={
+                              n.recommended.length > 0
+                                ? "https://neo4j.com/online-summit/session/" +
+                                  n.recommended[0].id
+                                : ""
+                            }
+                            target="_blank"
+                          >
+                            {n.recommended.length > 0
+                              ? n.recommended[0].name
+                              : ""}{" "}
+                          </a>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
