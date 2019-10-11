@@ -1,41 +1,67 @@
-[![Deploy to now](https://deploy.now.sh/static/button.svg)](https://deploy.now.sh/?repo=https://github.com/grand-stack/grand-stack-starter&env=NEO4J_USER&env=NEO4J_URI&env=NEO4J_PASSWORD)
+[![Deploy to now](https://deploy.now.sh/static/button.svg)](https://deploy.now.sh/?repo=https://github.com/johnymontana/NODES2019-GRANDstack&env=NEO4J_USER&env=NEO4J_URI&env=NEO4J_PASSWORD)
 
-# GRANDstack Starter
+# NODES 2019 GRANDstack Conference Search App
 
-This project is a starter for building a [GRANDstack](https://grandstack.io) (GraphQL, React, Apollo, Neo4j Database) application. There are two components to the starter, the UI application (a React app) and the API app (GraphQL server).
+![](images/app.png)
 
-[![Hands On With The GRANDstack Starter](http://img.youtube.com/vi/rPC71lUhK_I/0.jpg)](http://www.youtube.com/watch?v=rPC71lUhK_I "Hands On With The GRANDstack Starter")
+The [Neo4j Online Developer Expo and Summit (NODES) 2019](https://neo4j.com/online-summit/) is an online developer focused conference celebrating graph technology, such as graph databases, graph algorithms, GraphQL, and [GRANDstack.](https://grandstack.io) This repo contains a simple demo GRANDstack app to explore the conference sessions and show personalized recommendations using:
 
-## Quickstart
+**GRANDstack**
 
-### Neo4j
+* GraphQL
+* React
+* Apollo
+* Neo4j Database
 
-You need a Neo4j instance, e.g. a [Neo4j Sandbox](http://neo4j.com/sandbox), a local instance via [Neo4j Desktop](https://neo4j.com/download), [Docker](http://hub.docker.com/_/neo4j) or a [Neo4j instance on AWS, Azure or GCP](http://neo4j.com/developer/guide-cloud-deployment) or [Neo4j Cloud](http://neo4j.com/cloud)
+## Neo4j
 
-For schemas using the  `@cypher` directive (as in this repo) via [`neo4j-graphql-js`](https://github.com/neo4j-graphql/neo4j-graphql-js), you need to have the [APOC library](https://github.com/neo4j-contrib/neo4j-apoc-procedures) installed, which should be automatic in Sandbox, Cloud and is a single click install in Neo4j Desktop. If when using the Sandbox / cloud you encounter an issue where an error similar to `Can not be converted to long: org.neo4j.kernel.impl.core.NodeProxy, Location: [object Object], Path: users` appears in the console when running the React app, try installing and using Neo4j locally instead.
+![](images/neo4j_browser.png)
 
-#### Sandbox setup
-A good tutorial can be found here: https://www.youtube.com/watch?v=rPC71lUhK_I
+The data for the app is stored in Neo4j graph database. You can download Neo4j locally or spin up a Neo4j Sandbox. Be sure APOC is installed, then run this Cypher load script to import the dataset:
 
-#### Local setup
-1. [Download Neo4j Desktop](https://neo4j.com/download/)
-2. Install and open Neo4j Desktop.
-3. Create a new DB by clicking "New Graph", and clicking "create local graph".
-4. Set password to "letmein" (as suggested by `api/.env`), and click "Create".
-5. Make sure that the default credentials in `api/.env` are used. Leave them as follows: `NEO4J_URI=bolt://localhost:7687 NEO4J_USER=neo4j NEO4J_PASSWORD=letmein`
-6.  Click "Manage".
-7. Click "Plugins".
-8. Find "APOC" and click "Install".
-9. Click the "play" button at the top of left the screen, which should start the server. _(screenshot 2)_
-10. Wait until it says "RUNNING".
-11. Proceed forward with the rest of the tutorial.
+```Cypher
+LOAD CSV WITH HEADERS FROM "https://neo4j-datasets-public.s3-us-west-2.amazonaws.com/nodes2019.csv" AS row 
+WITH row SKIP 2
+MERGE (s:Session {id: coalesce(row.SLUG, "N/A")})
+SET s.event_end   = datetime({epochMillis: apoc.date.parse(row.event_end, 'ms', 'MM/dd/yyy HH:mm a')}),
+    s.photo       = row.PHOTO,
+    s.audience    = row.audience,
+    s.event_start = datetime({epochMillis: apoc.date.parse(row.event_start, 'ms', 'MM/dd/yyy HH:mm a')}),
+    s.name        = row.name,
+    s.description = row.description
+MERGE (v:Venue {name: coalesce(row.venue, "N/A")})
+MERGE (s)-[:IN]->(v)
 
-### [`/api`](./api)
+MERGE (cp:Company {name: coalesce(row.company, "N/A")})
+
+WITH *
+
+FOREACH(spk IN split(row.speakers, ";") |
+  MERGE (sp:Speaker {name: coalesce(trim(spk), "N/A")})
+  MERGE (sp)-[:WORKS_FOR]->(cp)
+  MERGE (sp)-[:PRESENTS]->(s)
+)
+
+FOREACH(subj IN split(row.subject,",") |
+  MERGE (sub:Subject {name: coalesce(subj, "N/A")})
+  MERGE (s)-[:HAS_SUBJECT]->(sub)
+)
+
+FOREACH(tg IN split(row.sessionTags, ",") |
+  MERGE (t:Tag {name: tg})
+  MERGE (s)-[:HAS_TAG]->(t)
+)
+```
+
+## GraphQL API
+
+![](images/graphql.png)
+
+A GraphQL API fetches data from Neo4j using the [`neo4j-graphql.js`](https://grandstack.io/docs/neo4j-graphql-js.html)
 
 *Install dependencies*
 
 ```
-(cd ./ui && npm install)
 (cd ./api && npm install)
 ```
 
@@ -44,20 +70,15 @@ A good tutorial can be found here: https://www.youtube.com/watch?v=rPC71lUhK_I
 cd ./api && npm start
 ```
 
-![](api/img/graphql-playground.png)
+## React UI
 
-### [`/ui`](./ui)
-
-This will start the GraphQL API in the foreground, so in another terminal session start the UI development server:
+The React app uses Apollo Client to query the GraphQL API and render search results and recommendations.
 
 *Start UI server*
 ```
-cd ./ui && npm start
+cd ./ui && npm install 
+npm start
 ```
-
-![](ui/img/default-app.png)
-
-See [the project releases](https://github.com/grand-stack/grand-stack-starter/releases) for the changelog.
 
 ## Deployment
 
@@ -80,30 +101,3 @@ now secret add NEO4J_PASSWORD <YOUR_DATABASE_USER_PASSWORD_HERE>
 1. Run `now` in `/api` and choose `package.json` when prompted.
 1. Set `REACT_APP_GRAPHQL_API` based on the API deployment URL from step 1 in `ui/.env`
 1. Run `now` in `/env` and choose `package.json` when prompted.
-
-## Docker Compose
-
-To use docker-compose to quickly start please make the following changes
-
-api/.env:
-```
-NEO4J_URI=bolt://neo4j:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=letmein
-GRAPHQL_LISTEN_PORT=4000
-GRAPHQL_URI=http://api:4000
-```
-
-Now you can quickly start via:
-```
-docker-compose up -d
-```
-
-If you want to load the example DB after the services have been started:
-```
-docker-compose run api npm run seedDb
-```
-
-
-This project is licensed under the Apache License v2.
-Copyright (c) 2018 Neo4j, Inc.
